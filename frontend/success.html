@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Acesso liberado</title>
+</head>
+<body>
+<h2>Bem-vindo!</h2>
+
+<div id="status"></div>
+<button onclick="logout()">Sair</button>
+
+<script>
+async function checkSession() {
+    const response = await fetch("http://localhost:5000/check", {
+        credentials: "include"
+    });
+
+    const data = await response.json();
+
+    if (!data.logged) {
+        window.location.href = "index.html";
+    } else {
+        document.getElementById("status").innerText = 
+            "Logado como: " + data.email;
+    }
+}
+
+async function logout() {
+    await fetch("http://localhost:5000/logout", {
+        credentials: "include"
+    });
+    window.location.href = "index.html";
+}
+
+checkSession();
+</script>
+</body>
+</html>

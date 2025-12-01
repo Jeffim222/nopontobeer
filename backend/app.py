@@ -1,47 +1,74 @@
-from flask import Flask, request, jsonify
-import psycopg2
-import os
+from flask import Flask, request, jsonify, session
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
 
 app = Flask(__name__)
+app.secret_key = "CHAVE_SUPER_SECRETA_MUDE_AQUI"
+CORS(app, supports_credentials=True)
 
-# Dados vindos das variáveis de ambiente do Render
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+def get_db():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    return conn
 
-def get_conn():
-    return psycopg2.connect(
-        host=DB_HOST,
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
+# Criar tabela se não existir
+with get_db() as db:
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    db.commit()
 
-@app.route("/login", methods=["POST"])
+# -------------------------- ROTAS --------------------------
+
+@app.post("/register")
+def register():
+    data = request.get_json()
+    email = data["email"]
+    password = generate_password_hash(data["password"])
+
+    try:
+        db = get_db()
+        db.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
+        db.commit()
+        return jsonify({"message": "Usuário registrado com sucesso!"})
+    except:
+        return jsonify({"error": "Email já cadastrado"}), 400
+
+
+@app.post("/login")
 def login():
-    data = request.json
-    email = data.get("email")
-    senha = data.get("senha")
+    data = request.get_json()
+    email = data["email"]
+    password = data["password"]
 
-    conn = get_conn()
-    cur = conn.cursor()
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
-    cur.execute("SELECT * FROM usuarios WHERE email=%s AND senha=%s",
-                (email, senha))
-    user = cur.fetchone()
+    if user and check_password_hash(user["password"], password):
+        session["user"] = email
+        return jsonify({"message": "Login bem-sucedido!"})
+    
+    return jsonify({"error": "Credenciais inválidas"}), 401
 
-    cur.close()
-    conn.close()
 
-    if user:
-        return jsonify({"status": "ok"})
-    else:
-        return jsonify({"status": "erro", "msg": "Credenciais inválidas"}), 401
+@app.get("/check")
+def check_session():
+    if "user" in session:
+        return jsonify({"logged": True, "email": session["user"]})
+    return jsonify({"logged": False})
 
-@app.route("/")
-def home():
-    return "API está rodando!"
+
+@app.get("/logout")
+def logout():
+    session.clear()
+    return jsonify({"message": "Logout efetuado!"})
+
+# -----------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
