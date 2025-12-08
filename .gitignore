@@ -1,19 +1,2 @@
-# Python
-__pycache__/
-*.pyc
-env/
-venv/
 .env
-
-# Logs
-*.log
-
-# Editor
-.vscode/
-.idea/
-
-# Front-end
-node_modules/
-
-# Sistema
-.DS_Store
+__pycache__/
