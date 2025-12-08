@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>NoPontoBeer - Login</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <h2>Login</h2>
-
-    <form method="POST" action="/login">
-        <label>Email</label><br>
-        <input type="email" name="email"><br><br>
-
-        <label>Senha</label><br>
-        <input type="password" name="password"><br><br>
-
-        <button type="submit">Entrar</button>
-    </form>
+    <div class="login-container">
+        <h2>NoPontoBeer</h2>
+        <form method="POST" action="/login">
+            <input type="text" name="username" placeholder="Usuário" required>
+            <input type="password" name="password" placeholder="Senha" required>
+            <button type="submit">Entrar</button>
+        </form>
+    </div>
 </body>
 </html>
