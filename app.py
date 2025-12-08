@@ -1,42 +1,43 @@
-from flask import Flask, render_template, request, redirect, session, send_from_directory
-import os
+from flask import Flask, request, redirect, render_template
+import psycopg2
 
 app = Flask(__name__)
-app.secret_key = "qualquercoisa123"  # troque depois
 
-# ---- Rotas ----
+def conectar():
+    return psycopg2.connect(
+        host="dpg-xxxxxxxxxx.render.com",
+        database="nome_do_banco",
+        user="usuario",
+        password="senha",
+        port="5432"
+    )
 
 @app.route("/")
-def home():
-    return send_from_directory(".", "index.html")
-
-@app.route("/dashboard")
-def dashboard():
-    if "user" in session:
-        return send_from_directory(".", "dashboard.html")
-    return redirect("/")
+def index():
+    return render_template("index.html")
 
 @app.route("/login", methods=["POST"])
 def login():
-    username = request.form["username"]
-    password = request.form["password"]
+    usuario = request.form["usuario"]
+    senha = request.form["senha"]
 
-    # login simples para testes
-    if username == "admin" and password == "123":
-        session["user"] = username
-        return redirect("/dashboard")
+    conn = conectar()
+    cur = conn.cursor()
 
-    return "Usuário ou senha inválidos!"
+    cur.execute("SELECT * FROM usuarios WHERE usuario=%s AND senha=%s", (usuario, senha))
+    result = cur.fetchone()
 
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    return redirect("/")
+    cur.close()
+    conn.close()
 
-# permitir carregar arquivos estáticos
-@app.route("/static/<path:path>")
-def send_static(path):
-    return send_from_directory("static", path)
+    if result:
+        return redirect("/home")
+    else:
+        return "Usuário ou senha inválidos"
+
+@app.route("/home")
+def home():
+    return render_template("home.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
