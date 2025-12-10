@@ -2,16 +2,196 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Inserir no Banco</title>
+    <title>CRUD PostgreSQL + Render</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-container, .lista-container {
+            background: #f5f5f5;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        input {
+            padding: 10px;
+            margin: 5px;
+            width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background: #007bff;
+            color: white;
+        }
+        .delete-btn {
+            background: #dc3545;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+    </style>
 </head>
 <body>
+    <h1>📊 CRUD PostgreSQL no Render</h1>
 
-    <h2>Inserir Nome</h2>
+    <div class="form-container">
+        <h2>➕ Adicionar Cliente</h2>
+        <form id="formCliente">
+            <input type="text" id="nome" placeholder="Nome do cliente" required>
+            <input type="email" id="email" placeholder="E-mail (opcional)">
+            <button type="submit">Salvar</button>
+        </form>
+        <div id="mensagem" style="margin-top: 10px;"></div>
+    </div>
 
-    <form method="POST" action="/inserir">
-        <input type="text" name="nome" placeholder="Digite o nome" required>
-        <button type="submit">Salvar</button>
-    </form>
+    <div class="lista-container">
+        <h2>👥 Clientes Cadastrados</h2>
+        <button onclick="carregarClientes()">🔄 Atualizar Lista</button>
+        <table id="tabelaClientes">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabela">
+                <!-- Dados serão carregados aqui -->
+            </tbody>
+        </table>
+    </div>
 
+    <script>
+        // Carregar clientes ao abrir a página
+        document.addEventListener('DOMContentLoaded', carregarClientes);
+
+        // Formulário de inserção
+        document.getElementById('formCliente').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const nome = document.getElementById('nome').value;
+            const email = document.getElementById('email').value;
+            const mensagemDiv = document.getElementById('mensagem');
+            
+            const formData = new FormData();
+            formData.append('nome', nome);
+            if (email) formData.append('email', email);
+            
+            try {
+                const response = await fetch('/inserir', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const resultado = await response.json();
+                
+                if (resultado.success) {
+                    mensagemDiv.innerHTML = `<span style="color: green;">✅ ${resultado.message}</span>`;
+                    document.getElementById('nome').value = '';
+                    document.getElementById('email').value = '';
+                    carregarClientes(); // Atualiza a lista
+                } else {
+                    mensagemDiv.innerHTML = `<span style="color: red;">❌ ${resultado.message}</span>`;
+                }
+            } catch (error) {
+                mensagemDiv.innerHTML = `<span style="color: red;">❌ Erro de conexão: ${error.message}</span>`;
+            }
+        });
+
+        // Função para carregar clientes
+        async function carregarClientes() {
+            try {
+                const response = await fetch('/api/clientes');
+                const data = await response.json();
+                
+                const corpoTabela = document.getElementById('corpoTabela');
+                corpoTabela.innerHTML = '';
+                
+                if (data.clientes && data.clientes.length > 0) {
+                    data.clientes.forEach(cliente => {
+                        const linha = document.createElement('tr');
+                        linha.innerHTML = `
+                            <td>${cliente.id}</td>
+                            <td>${cliente.nome}</td>
+                            <td>${cliente.email || '-'}</td>
+                            <td>
+                                <button class="delete-btn" onclick="deletarCliente(${cliente.id})">
+                                    🗑️ Deletar
+                                </button>
+                            </td>
+                        `;
+                        corpoTabela.appendChild(linha);
+                    });
+                } else {
+                    corpoTabela.innerHTML = `
+                        <tr>
+                            <td colspan="4" style="text-align: center;">
+                                Nenhum cliente cadastrado ainda.
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                document.getElementById('corpoTabela').innerHTML = `
+                    <tr>
+                        <td colspan="4" style="color: red; text-align: center;">
+                            Erro ao carregar dados.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Função para deletar cliente
+        async function deletarCliente(id) {
+            if (!confirm(`Tem certeza que deseja deletar o cliente ID ${id}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/deletar/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const resultado = await response.json();
+                
+                if (resultado.success) {
+                    alert(resultado.message);
+                    carregarClientes(); // Atualiza a lista
+                } else {
+                    alert(`Erro: ${resultado.message}`);
+                }
+            } catch (error) {
+                alert(`Erro ao deletar: ${error.message}`);
+            }
+        }
+    </script>
 </body>
 </html>
