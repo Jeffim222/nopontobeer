@@ -1,7 +1,7 @@
-import psycopg2
+import psycopg
 def get_connection():
     try:
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host="dpg-d4ffejk9c44c73boc8hg-a.oregon-postgres.render.com",
             database="beer_jp8s",
             user="admin",
