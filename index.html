@@ -1,197 +1,427 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <title>CRUD PostgreSQL + Render</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disk Cerveja - Sistema Interno</title>
     <style>
+        :root {
+            --primary: #FF8C00;
+            --primary-dark: #E67E00;
+            --secondary: #2C3E50;
+            --light: #ECF0F1;
+            --dark: #2C3E50;
+            --success: #27AE60;
+            --warning: #E74C3C;
+            --gold: #FFD700;
+            --silver: #C0C0C0;
+            --bronze: #CD7F32;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            background: linear-gradient(135deg, #1a2a3a, #2c3e50);
+            color: var(--light);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
         }
-        .form-container, .lista-container {
-            background: #f5f5f5;
-            padding: 20px;
+        
+        .login-container {
+            display: flex;
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .brand-section {
+            flex: 1;
+            background: linear-gradient(rgba(44, 62, 80, 0.8), rgba(44, 62, 80, 0.9));
+            background-size: cover;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .brand-logo {
+            width: 120px;
+            height: 120px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             margin-bottom: 20px;
-            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
         }
-        input {
+        
+        .brand-logo i {
+            font-size: 60px;
+            color: white;
+        }
+        
+        .brand-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: white;
+        }
+        
+        .brand-subtitle {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+        
+        .features {
+            width: 100%;
+            margin-top: 30px;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
             padding: 10px;
-            margin: 5px;
-            width: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
         }
-        button {
-            padding: 10px 20px;
-            background: #007bff;
+        
+        .feature i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .login-section {
+            flex: 1;
+            padding: 40px;
+            background: white;
+            color: var(--dark);
+        }
+        
+        .login-header {
+            margin-bottom: 30px;
+        }
+        
+        .login-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 10px;
+        }
+        
+        .login-subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .input-with-icon {
+            position: relative;
+        }
+        
+        .input-with-icon i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #95a5a6;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.2);
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #95a5a6;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
         }
-        button:hover {
-            background: #0056b3;
+        
+        .btn-login:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 140, 0, 0.4);
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .alert-error {
+            background: #ffeaea;
+            color: #d63031;
+            border: 1px solid #ff7675;
+        }
+        
+        .alert-success {
+            background: #eaffea;
+            color: #00b894;
+            border: 1px solid #55efc4;
+        }
+        
+        .forgot-password {
+            text-align: center;
             margin-top: 20px;
         }
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: left;
+        
+        .forgot-password a {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
         }
-        th {
-            background: #007bff;
-            color: white;
-        }
-        .delete-btn {
-            background: #dc3545;
-            padding: 5px 10px;
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
             font-size: 12px;
+            color: #95a5a6;
         }
-        .delete-btn:hover {
-            background: #c82333;
+        
+        @media (max-width: 768px) {
+            .login-container {
+                flex-direction: column;
+            }
+            
+            .brand-section {
+                padding: 30px 20px;
+            }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <h1>📊 CRUD PostgreSQL no Render</h1>
-
-    <div class="form-container">
-        <h2>➕ Adicionar Cliente</h2>
-        <form id="formCliente">
-            <input type="text" id="nome" placeholder="Nome do cliente" required>
-            <input type="email" id="email" placeholder="E-mail (opcional)">
-            <button type="submit">Salvar</button>
-        </form>
-        <div id="mensagem" style="margin-top: 10px;"></div>
+    <div class="login-container">
+        <div class="brand-section">
+            <div class="brand-logo">
+                <i class="fas fa-beer"></i>
+            </div>
+            <h1 class="brand-title">Disk Cerveja</h1>
+            <p class="brand-subtitle">Sistema Interno de Gerenciamento</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Acesso Restrito a Funcionários</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Múltiplos Níveis de Acesso</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Controle de Estoque e Vendas</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-truck"></i>
+                    <span>Gestão de Entregas</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-section">
+            <div class="login-header">
+                <h2 class="login-title">Acesso ao Sistema</h2>
+                <p class="login-subtitle">Insira suas credenciais para acessar o sistema interno</p>
+            </div>
+            
+            <!-- Mensagens de alerta -->
+            <div id="alertMessage" class="alert" style="display: none;"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Usuário ou E-mail</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" name="username" 
+                               placeholder="Digite seu usuário ou e-mail" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" 
+                               placeholder="Digite sua senha" required>
+                        <span class="password-toggle" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i> Entrar no Sistema
+                </button>
+                
+                <div class="forgot-password">
+                    <a href="#" onclick="alert('Contate o administrador do sistema')">Esqueci minha senha</a>
+                </div>
+            </form>
+            
+            <div class="footer">
+                <p>Disk Cerveja &copy; 2023 - Sistema Interno</p>
+                <p>Restrito a funcionários autorizados</p>
+                <p style="margin-top: 10px; font-size: 10px; color: #bdc3c7;">
+                    Use: <strong>admin</strong> / <strong>admin123</strong>
+                </p>
+            </div>
+        </div>
     </div>
 
-    <div class="lista-container">
-        <h2>👥 Clientes Cadastrados</h2>
-        <button onclick="carregarClientes()">🔄 Atualizar Lista</button>
-        <table id="tabelaClientes">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome</th>
-                    <th>E-mail</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="corpoTabela">
-                <!-- Dados serão carregados aqui -->
-            </tbody>
-        </table>
-    </div>
-
+    <script src="ip.js"></script>
     <script>
-        // Carregar clientes ao abrir a página
-        document.addEventListener('DOMContentLoaded', carregarClientes);
-
-        // Formulário de inserção
-        document.getElementById('formCliente').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // Alternar visibilidade da senha
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
             
-            const nome = document.getElementById('nome').value;
-            const email = document.getElementById('email').value;
-            const mensagemDiv = document.getElementById('mensagem');
-            
-            const formData = new FormData();
-            formData.append('nome', nome);
-            if (email) formData.append('email', email);
-            
-            try {
-                const response = await fetch('/inserir', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const resultado = await response.json();
-                
-                if (resultado.success) {
-                    mensagemDiv.innerHTML = `<span style="color: green;">✅ ${resultado.message}</span>`;
-                    document.getElementById('nome').value = '';
-                    document.getElementById('email').value = '';
-                    carregarClientes(); // Atualiza a lista
-                } else {
-                    mensagemDiv.innerHTML = `<span style="color: red;">❌ ${resultado.message}</span>`;
-                }
-            } catch (error) {
-                mensagemDiv.innerHTML = `<span style="color: red;">❌ Erro de conexão: ${error.message}</span>`;
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         });
-
-        // Função para carregar clientes
-        async function carregarClientes() {
-            try {
-                const response = await fetch('/api/clientes');
-                const data = await response.json();
-                
-                const corpoTabela = document.getElementById('corpoTabela');
-                corpoTabela.innerHTML = '';
-                
-                if (data.clientes && data.clientes.length > 0) {
-                    data.clientes.forEach(cliente => {
-                        const linha = document.createElement('tr');
-                        linha.innerHTML = `
-                            <td>${cliente.id}</td>
-                            <td>${cliente.nome}</td>
-                            <td>${cliente.email || '-'}</td>
-                            <td>
-                                <button class="delete-btn" onclick="deletarCliente(${cliente.id})">
-                                    🗑️ Deletar
-                                </button>
-                            </td>
-                        `;
-                        corpoTabela.appendChild(linha);
-                    });
-                } else {
-                    corpoTabela.innerHTML = `
-                        <tr>
-                            <td colspan="4" style="text-align: center;">
-                                Nenhum cliente cadastrado ainda.
-                            </td>
-                        </tr>
-                    `;
-                }
-            } catch (error) {
-                console.error('Erro ao carregar clientes:', error);
-                document.getElementById('corpoTabela').innerHTML = `
-                    <tr>
-                        <td colspan="4" style="color: red; text-align: center;">
-                            Erro ao carregar dados.
-                        </td>
-                    </tr>
-                `;
-            }
-        }
-
-        // Função para deletar cliente
-        async function deletarCliente(id) {
-            if (!confirm(`Tem certeza que deseja deletar o cliente ID ${id}?`)) {
-                return;
-            }
+        
+        // Efeito visual nos inputs
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.querySelector('i').style.color = 'var(--primary)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.querySelector('i').style.color = '#95a5a6';
+            });
+        });
+        
+        // Processar login via AJAX
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const alertDiv = document.getElementById('alertMessage');
+            
+            // Mostrar carregamento
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+            submitBtn.disabled = true;
             
             try {
-                const response = await fetch(`/api/deletar/${id}`, {
-                    method: 'DELETE'
+                const response = await fetch(`${ip}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
                 });
                 
-                const resultado = await response.json();
+                const result = await response.json();
                 
-                if (resultado.success) {
-                    alert(resultado.message);
-                    carregarClientes(); // Atualiza a lista
+                if (result.success) {
+                    // Login bem-sucedido
+                    alertDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${result.message}`;
+                    alertDiv.className = 'alert alert-success';
+                    alertDiv.style.display = 'flex';
+                    
+                    // Redirecionar para dashboard após 1 segundo
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
                 } else {
-                    alert(`Erro: ${resultado.message}`);
+                    // Login falhou
+                    alertDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${result.message}`;
+                    alertDiv.className = 'alert alert-error';
+                    alertDiv.style.display = 'flex';
+                    
+                    // Restaurar botão
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                 }
             } catch (error) {
-                alert(`Erro ao deletar: ${error.message}`);
+                // Erro de conexão
+                alertDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erro de conexão com o servidor`;
+                alertDiv.className = 'alert alert-error';
+                alertDiv.style.display = 'flex';
+                
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                console.error('Erro no login:', error);
             }
-        }
+        });
+        
+        // Foco no campo de usuário ao carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('username').focus();
+        });
     </script>
 </body>
 </html>
