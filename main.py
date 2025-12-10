@@ -359,6 +359,34 @@ def vendas_hoje():
     
     try:
         cur = conn.cursor()
+        # Busca vendas de hoje - VERSÃO SIMPLES (sem status)
+        cur.execute("""
+            SELECT COALESCE(SUM(total), 0) as total_hoje
+            FROM vendas 
+            WHERE DATE(data_venda) = CURRENT_DATE
+        """)
+        
+        resultado = cur.fetchone()
+        total_hoje = float(resultado[0]) if resultado else 0
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "total_hoje": total_hoje
+        })
+        
+    except Exception as e:
+        print(f"Erro ao buscar vendas hoje: {e}")
+        return jsonify({"success": False, "total": 0}), 500
+    """Retorna o total de vendas do dia atual"""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"success": False, "total": 0}), 500
+    
+    try:
+        cur = conn.cursor()
         # Busca vendas de hoje (data atual)
         cur.execute("""
             SELECT COALESCE(SUM(total), 0) as total_hoje
@@ -381,7 +409,7 @@ def vendas_hoje():
     except Exception as e:
         print(f"Erro ao buscar vendas hoje: {e}")
         return jsonify({"success": False, "total": 0}), 500
-    
+        
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
