@@ -1,31 +1,37 @@
-from flask import Flask, render_template, request
+from flask import Flask, send_from_directory, request
 from db import get_connection
+import os
 
 app = Flask(__name__)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return send_from_directory(BASE_DIR, "index.html")
 
-@app.route("/salvar", methods=["POST"])
-def salvar():
+
+@app.route("/inserir", methods=["POST"])
+def inserir():
     nome = request.form.get("nome")
-    email = request.form.get("email")
 
-    # Conexão com o banco
     conn = get_connection()
     cur = conn.cursor()
-
-    cur.execute("""
-        INSERT INTO clientes (nome, email)
-        VALUES (%s, %s)
-    """, (nome, email))
-
+    cur.execute("INSERT INTO teste (nome) VALUES (%s)", (nome,))
     conn.commit()
+
     cur.close()
     conn.close()
 
-    return "Dados salvos com sucesso no PostgreSQL!"
+    return "Inserido com sucesso!"
+
+
+# Isso permite acessar CSS, JS, imagens na raiz
+@app.route("/<path:filename>")
+def static_files(filename):
+    return send_from_directory(BASE_DIR, filename)
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run()
