@@ -1,21 +1,31 @@
-from flask import Flask, send_from_directory, render_template
-import os
+from flask import Flask, render_template, request
+from db import get_connection
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
+app = Flask(__name__)
 
-# Serve index.html (from templates or root)
 @app.route("/")
 def index():
-    # se index.html está na raiz do repo
-    if os.path.exists("index.html"):
-        return send_from_directory(".", "index.html")
-    return "Index not found", 404
+    return render_template("index.html")
 
-# Serve arquivos estáticos se quiser
-@app.route("/static/<path:path>")
-def static_files(path):
-    return send_from_directory("static", path)
+@app.route("/salvar", methods=["POST"])
+def salvar():
+    nome = request.form.get("nome")
+    email = request.form.get("email")
+
+    # Conexão com o banco
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO clientes (nome, email)
+        VALUES (%s, %s)
+    """, (nome, email))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return "Dados salvos com sucesso no PostgreSQL!"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000)
