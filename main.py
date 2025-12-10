@@ -153,33 +153,88 @@ def deletar_produto(id):
             cur.close()
             conn.close()
 
-# ========== ROTAS DE VENDAS ==========
-@app.route("/api/vendas", methods=["POST"])
-def criar_venda():
-    """Cria nova venda"""
-    data = request.get_json()
-    
-    cliente_nome = data.get('cliente_nome', '').strip()
-    forma_pagamento = data.get('forma_pagamento', 'Dinheiro')
-    itens = data.get('itens', [])
-    
-    if not itens:
-        return jsonify({"success": False, "message": "Nenhum item na venda!"}), 400
-    
+# Adicione esta rota para buscar por código de barras
+@app.route("/api/produtos/codigo/<codigo>", methods=["GET"])
+def buscar_produto_codigo(codigo):
+    """Busca produto por código de barras"""
     conn = get_connection()
     if not conn:
         return jsonify({"success": False, "message": "Banco offline"}), 500
     
     try:
         cur = conn.cursor()
-        
-        # Calcular total
-        total = sum(item['quantidade'] * item['preco_unitario'] for item in itens)
-        
-        # Criar venda
         cur.execute("""
-            INSERT INTO vendas (cliente_nome, total, forma_pagamento)
-            VALUES (%s, %s, %s) RETURNING id
+            SELECT id, nome, categoria, preco_venda, estoque, unidade, codigo_barras
+            FROM produtos 
+            WHERE codigo_barras = %s
+        """, (codigo,))
+        
+        produto_db = cur.fetchone()
+        
+        if produto_db:
+            produto = {
+                "id": produto_db[0],
+                "nome": produto_db[1],
+                "categoria": produto_db[2],
+                "preco_venda": float(produto_db[3]),
+                "estoque": produto_db[4],
+                "unidade": produto_db[5],
+                "codigo_barras": produto_db[6]
+            }
+            return jsonify({"success": True, "produto": produto})
+        else:
+            return jsonify({"success": False, "message": "Produto não encontrado"}), 404
+            
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Erro: {str(e)}"}), 500
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
+# ========== ROTAS DE VENDAS ==========
+
+@app.route("/api/vendas", methods=["POST"])
+def criar_venda():
+    """Cria nova venda"""
+    try:
+        data = request.get_json()
+        print(f"DEBUG: Dados recebidos: {data}")  # Log para debug
+        
+        cliente_nome = data.get('cliente_nome', '').strip()
+        forma_pagamento = data.get('forma_pagamento', 'Dinheiro')
+        itens = data.get('itens', [])
+        
+        if not itens:
+            return jsonify({"success": False, "message": "Nenhum item na venda!"}), 400
+        
+        conn = get_connection()
+        if not conn:
+            return jsonify({"success": False, "message": "Banco offline"}), 500
+        
+        cur = conn.cursor()
+        
+        # Calcular subtotal
+        subtotal = sum(item['quantidade'] * item['preco_unitario'] for item in itens)
+        
+        # Calcular desconto (simples)
+        tipo_desconto = data.get('tipo_desconto', 'valor')
+        desconto = 0
+        
+        if tipo_desconto == 'valor':
+            desconto = data.get('valor_desconto', 0)
+        elif tipo_desconto == 'percentual':
+            percentual = data.get('percentual_desconto', 0)
+            desconto = subtotal * (percentual / 100)
+        
+        total = subtotal - desconto
+        
+        # Criar venda (SEM subtotal na query por enquanto)
+        cur.execute("""
+            INSERT INTO vendas 
+            (cliente_nome, total, forma_pagamento) 
+            VALUES (%s, %s, %s) 
+            RETURNING id
         """, (cliente_nome, total, forma_pagamento))
         
         venda_id = cur.fetchone()[0]
@@ -199,21 +254,24 @@ def criar_venda():
             """, (item['quantidade'], item['produto_id']))
         
         conn.commit()
+        cur.close()
+        conn.close()
         
         return jsonify({
             "success": True,
-            "message": f"Venda criada! Total: R$ {total:.2f}",
+            "message": f"Venda #{venda_id} criada! Total: R$ {total:.2f}",
             "venda_id": venda_id,
             "total": total
         })
         
     except Exception as e:
-        conn.rollback()
-        return jsonify({"success": False, "message": f"Erro: {str(e)}"}), 500
-    finally:
-        if conn:
-            cur.close()
-            conn.close()
+        print(f"❌ ERRO NA VENDA: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "message": f"Erro no servidor: {str(e)}"
+        }), 500
 
 @app.route("/api/vendas", methods=["GET"])
 def listar_vendas():
@@ -254,7 +312,7 @@ def listar_vendas():
             cur.close()
             conn.close()
 
-# ========== ROTAS EXISTENTES (mantemos) ==========
+# ========== ROTAS INDEX/LOGIN ==========
 @app.route("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")
@@ -292,6 +350,38 @@ def auth_status():
 def static_files(filename):
     return send_from_directory(BASE_DIR, filename)
 
+@app.route("/api/dashboard/vendas-hoje", methods=["GET"])
+def vendas_hoje():
+    """Retorna o total de vendas do dia atual"""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"success": False, "total": 0}), 500
+    
+    try:
+        cur = conn.cursor()
+        # Busca vendas de hoje (data atual)
+        cur.execute("""
+            SELECT COALESCE(SUM(total), 0) as total_hoje
+            FROM vendas 
+            WHERE DATE(data_venda) = CURRENT_DATE
+            AND status = 'Concluída'
+        """)
+        
+        resultado = cur.fetchone()
+        total_hoje = float(resultado[0]) if resultado else 0
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "total_hoje": total_hoje
+        })
+        
+    except Exception as e:
+        print(f"Erro ao buscar vendas hoje: {e}")
+        return jsonify({"success": False, "total": 0}), 500
+    
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)

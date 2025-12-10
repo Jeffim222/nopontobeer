@@ -474,6 +474,16 @@
                     <form id="formProduto">
                         <input type="hidden" id="produtoId">
                         <div class="form-row">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="codigo_barras">Código de Barras</label>
+                                    <input type="text" id="codigo_barras" placeholder="789123456001" maxlength="50">
+                                </div>
+                                <div class="form-group">
+                                    <label for="preco_custo">Preço de Custo (opcional)</label>
+                                    <input type="number" id="preco_custo" step="0.01" min="0" placeholder="0,00">
+                                </div>
+                            </div>
                             <div class="form-group">
                                 <label for="nome">Nome do Produto *</label>
                                 <input type="text" id="nome" required placeholder="Ex: Brahma Chopp 1L">
@@ -558,13 +568,25 @@
                     <div class="produtos-lista">
                         <div class="table-container">
                             <h3 style="margin-bottom: 20px;">Produtos Disponíveis</h3>
-                            <div style="margin-bottom: 15px;">
-                                <input type="text" id="buscarProduto" placeholder="Buscar produto..." 
-                                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <!-- Campo de busca por código -->
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <div style="flex: 2;">
+                                    <input type="text" id="buscarProduto" placeholder="Buscar por nome..." 
+                                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                </div>
+                                <div style="flex: 1; display: flex; gap: 5px;">
+                                    <input type="text" id="buscarCodigo" placeholder="Código de barras" 
+                                        style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <button class="btn btn-primary" onclick="buscarPorCodigo()" 
+                                            style="padding: 10px 15px;">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
                             </div>
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>Código</th>
                                         <th>Produto</th>
                                         <th>Estoque</th>
                                         <th>Preço</th>
@@ -596,6 +618,21 @@
                                 <option value="PIX">PIX</option>
                             </select>
                         </div>
+                        <div style="margin-bottom: 15px;">
+                            <label>Desconto</label>
+                            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                                <div style="flex: 1;">
+                                    <select id="tipoDesconto" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                        <option value="valor">Valor (R$)</option>
+                                        <option value="percentual">Percentual (%)</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 1;">
+                                    <input type="number" id="valorDesconto" step="0.01" min="0" value="0" 
+                                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                </div>
+                            </div>
+                        </div>
                         
                         <div id="carrinhoItens" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
                             <!-- Itens do carrinho -->
@@ -604,8 +641,19 @@
                             </div>
                         </div>
                         
-                        <div class="carrinho-total" id="carrinhoTotal">
-                            Total: R$ 0,00
+                        <div id="carrinhoResumo" style="margin-top: 20px; font-size: 14px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>Subtotal:</span>
+                                <span id="carrinhoSubtotal">R$ 0,00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #27ae60;">
+                                <span>Desconto:</span>
+                                <span id="carrinhoDesconto">- R$ 0,00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; border-top: 1px solid #eee; padding-top: 10px;">
+                                <span>Total:</span>
+                                <span id="carrinhoTotal">R$ 0,00</span>
+                            </div>
                         </div>
                         
                         <button class="btn btn-primary" style="width: 100%; padding: 15px; margin-top: 20px;" onclick="finalizarVenda()">
@@ -659,6 +707,28 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await checkAuth();
             carregarProdutos();
+            
+            // ========== CONFIGURA LEITOR EXTERNO ==========
+            const inputCodigo = document.getElementById('buscarCodigo');
+            if (inputCodigo) {
+                // Detecta quando o leitor envia ENTER (código 13)
+                inputCodigo.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // Evita submit do formulário
+                        
+                        const codigo = this.value.trim();
+                        if (codigo.length >= 3) { // Código válido tem pelo menos 3 dígitos
+                            buscarEAdicionarPorCodigo(codigo);
+                            this.value = ''; // Limpa campo após leitura
+                        }
+                    }
+                });
+                
+                // Foco automático sempre que entrar na página de venda
+                inputCodigo.addEventListener('focus', function() {
+                    this.select(); // Seleciona todo o texto para substituição
+                });
+            }
         });
         
         // Verificar autenticação
@@ -674,6 +744,25 @@
                 }
             } catch (error) {
                 window.location.href = '/';
+            }
+        }
+        
+        // ========== FUNÇÃO PARA LEITOR EXTERNO ==========
+        async function buscarEAdicionarPorCodigo(codigo) {
+            try {
+                const response = await fetch(`/api/produtos/codigo/${codigo}`);
+                const data = await response.json();
+                
+                if (data.success && data.produto) {
+                    adicionarAoCarrinho(data.produto.id);
+                    showAlert('success', `✓ ${data.produto.nome} adicionado!`);
+                } else {
+                    showAlert('error', '❌ Produto não encontrado!');
+                    // Mantém foco no campo para nova leitura
+                    document.getElementById('buscarCodigo')?.focus();
+                }
+            } catch (error) {
+                showAlert('error', 'Erro na conexão');
             }
         }
         
@@ -714,6 +803,14 @@
                 atualizarDashboard();
             } else if (pageId === 'venda') {
                 atualizarProdutosVenda();
+                // Foco automático no campo de código
+                setTimeout(() => {
+                    const inputCodigo = document.getElementById('buscarCodigo');
+                    if (inputCodigo) {
+                        inputCodigo.focus();
+                        inputCodigo.select();
+                    }
+                }, 100);
             } else if (pageId === 'vendas') {
                 carregarVendas();
             }
@@ -745,7 +842,7 @@
             if (produtos.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 20px;">
+                        <td colspan="7" style="text-align: center; padding: 20px;">
                             Nenhum produto cadastrado
                         </td>
                     </tr>
@@ -756,7 +853,10 @@
             tbody.innerHTML = produtos.map(produto => `
                 <tr>
                     <td>${produto.id}</td>
-                    <td>${produto.nome}</td>
+                    <td>
+                        ${produto.nome}
+                        ${produto.codigo_barras ? `<br><small style="color: #666;">${produto.codigo_barras}</small>` : ''}
+                    </td>
                     <td>${produto.categoria || '-'}</td>
                     <td>R$ ${produto.preco_venda.toFixed(2)}</td>
                     <td>${produto.estoque} ${produto.unidade}</td>
@@ -771,15 +871,14 @@
                 </tr>
             `).join('');
         }
-        
+                
         // Formulário de produto
         document.getElementById('formProduto').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const produtoId = document.getElementById('produtoId').value;
             const produto = {
                 nome: document.getElementById('nome').value.trim(),
                 categoria: document.getElementById('categoria').value.trim(),
+                codigo_barras: document.getElementById('codigo_barras').value.trim() || null,
                 preco_venda: parseFloat(document.getElementById('preco_venda').value),
                 estoque: parseInt(document.getElementById('estoque').value) || 0,
                 unidade: document.getElementById('unidade').value,
@@ -840,6 +939,7 @@
             document.getElementById('produtoId').value = produto.id;
             document.getElementById('nome').value = produto.nome;
             document.getElementById('categoria').value = produto.categoria || '';
+            document.getElementById('codigo_barras').value = produto.codigo_barras || '';
             document.getElementById('preco_venda').value = produto.preco_venda;
             document.getElementById('estoque').value = produto.estoque;
             document.getElementById('unidade').value = produto.unidade || 'UN';
@@ -884,6 +984,7 @@
             
             tbody.innerHTML = produtos.map(produto => `
                 <tr>
+                    <td><small>${produto.codigo_barras || '-'}</small></td>
                     <td>${produto.nome}</td>
                     <td>${produto.estoque} ${produto.unidade}</td>
                     <td>R$ ${produto.preco_venda.toFixed(2)}</td>
@@ -925,9 +1026,26 @@
             
             atualizarCarrinho();
         }
-        
+
+        // ========== FUNÇÕES DE DESCONTO ==========
+        function calcularDesconto(subtotal, tipo, valor) {
+            if (!valor || valor <= 0) return 0;
+            
+            if (tipo === 'valor') {
+                // Desconto em R$ - não pode ser maior que subtotal
+                return Math.min(valor, subtotal);
+            } else if (tipo === 'percentual') {
+                // Desconto em % - máximo 100%
+                const percentual = Math.min(valor, 100);
+                return subtotal * (percentual / 100);
+            }
+            return 0;
+        }
+
         function atualizarCarrinho() {
             const container = document.getElementById('carrinhoItens');
+            const subtotalElement = document.getElementById('carrinhoSubtotal');
+            const descontoElement = document.getElementById('carrinhoDesconto');
             const totalElement = document.getElementById('carrinhoTotal');
             
             if (carrinho.length === 0) {
@@ -936,20 +1054,23 @@
                         Carrinho vazio
                     </div>
                 `;
-                totalElement.textContent = 'Total: R$ 0,00';
+                subtotalElement.textContent = 'R$ 0,00';
+                descontoElement.textContent = '- R$ 0,00';
+                totalElement.textContent = 'R$ 0,00';
                 return;
             }
             
-            let total = 0;
+            // Calcular subtotal
+            let subtotal = 0;
             container.innerHTML = carrinho.map(item => {
-                const subtotal = item.preco_unitario * item.quantidade;
-                total += subtotal;
+                const itemTotal = item.preco_unitario * item.quantidade;
+                subtotal += itemTotal;
                 
                 return `
                     <div class="carrinho-item">
                         <div>
                             <strong>${item.nome}</strong><br>
-                            <small>R$ ${item.preco_unitario.toFixed(2)}/${item.unidade}</small>
+                            <small>R$ ${item.preco_unitario.toFixed(2)}/${item.unidade} × ${item.quantidade}</small>
                         </div>
                         <div class="quantidade-controle">
                             <button class="quantidade-btn" onclick="alterarQuantidade(${item.produto_id}, -1)">-</button>
@@ -963,8 +1084,77 @@
                 `;
             }).join('');
             
-            totalElement.textContent = `Total: R$ ${total.toFixed(2)}`;
+            // Calcular desconto
+            const tipoDesconto = document.getElementById('tipoDesconto').value;
+            const valorDesconto = parseFloat(document.getElementById('valorDesconto').value) || 0;
+            const desconto = calcularDesconto(subtotal, tipoDesconto, valorDesconto);
+            const total = subtotal - desconto;
+            
+            // Atualizar display
+            subtotalElement.textContent = `R$ ${subtotal.toFixed(2)}`;
+            
+            if (desconto > 0) {
+                descontoElement.textContent = `- R$ ${desconto.toFixed(2)}`;
+                descontoElement.style.color = '#27ae60';
+                descontoElement.style.fontWeight = 'bold';
+            } else {
+                descontoElement.textContent = '- R$ 0,00';
+                descontoElement.style.color = '#95a5a6';
+            }
+            
+            totalElement.textContent = `R$ ${total.toFixed(2)}`;
         }
+                
+        // Atualizar desconto quando valores mudarem
+        document.getElementById('tipoDesconto')?.addEventListener('change', atualizarCarrinho);
+        document.getElementById('valorDesconto')?.addEventListener('input', atualizarCarrinho);
+
+        // Validar desconto ao digitar
+        document.getElementById('valorDesconto')?.addEventListener('change', function() {
+            const tipo = document.getElementById('tipoDesconto').value;
+            const valor = parseFloat(this.value) || 0;
+            
+            if (tipo === 'percentual' && valor > 100) {
+                this.value = 100;
+                showAlert('info', 'Desconto máximo é 100%');
+            } else if (valor < 0) {
+                this.value = 0;
+            }
+            
+            atualizarCarrinho();
+        });
+                async function buscarPorCodigo() {
+                    const codigo = document.getElementById('buscarCodigo').value.trim();
+                    if (!codigo) {
+                        showAlert('error', 'Digite um código de barras');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/api/produtos/codigo/${codigo}`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Adicionar automaticamente ao carrinho
+                            adicionarAoCarrinho(data.produto.id);
+                            document.getElementById('buscarCodigo').value = '';
+                            document.getElementById('buscarCodigo').focus();
+                            showAlert('success', `Produto "${data.produto.nome}" adicionado!`);
+                        } else {
+                            showAlert('error', data.message || 'Produto não encontrado');
+                        }
+                    } catch (error) {
+                        showAlert('error', 'Erro na busca');
+                        console.error(error);
+                    }
+                }
+
+        // Permitir pressionar Enter no campo de código
+        document.getElementById('buscarCodigo')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                buscarPorCodigo();
+            }
+        });
         
         function alterarQuantidade(produtoId, delta) {
             const item = carrinho.find(i => i.produto_id === produtoId);
@@ -989,53 +1179,94 @@
         }
         
         async function finalizarVenda() {
-            if (carrinho.length === 0) {
-                showAlert('error', 'Adicione itens ao carrinho primeiro!');
-                return;
-            }
-            
-            const venda = {
-                cliente_nome: document.getElementById('clienteNome').value.trim() || null,
-                forma_pagamento: document.getElementById('formaPagamento').value,
-                itens: carrinho.map(item => ({
-                    produto_id: item.produto_id,
-                    quantidade: item.quantidade,
-                    preco_unitario: item.preco_unitario
-                }))
-            };
-            
-            if (!confirm(`Confirmar venda de ${carrinho.length} itens por R$ ${calcularTotalCarrinho().toFixed(2)}?`)) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/vendas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(venda)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('success', result.message);
-                    carrinho = [];
-                    atualizarCarrinho();
-                    document.getElementById('clienteNome').value = '';
-                    await carregarProdutos();
-                } else {
-                    showAlert('error', result.message);
-                }
-            } catch (error) {
-                showAlert('error', 'Erro ao finalizar venda');
-                console.error(error);
-            }
-        }
+    if (carrinho.length === 0) {
+        showAlert('error', 'Adicione itens ao carrinho primeiro!');
+        return;
+    }
+    
+    // Dados básicos da venda
+    const venda = {
+        cliente_nome: document.getElementById('clienteNome').value.trim() || '',
+        forma_pagamento: document.getElementById('formaPagamento').value,
+        tipo_desconto: document.getElementById('tipoDesconto').value,
+        valor_desconto: parseFloat(document.getElementById('valorDesconto').value) || 0,
+        itens: carrinho.map(item => ({
+            produto_id: item.produto_id,
+            quantidade: item.quantidade,
+            preco_unitario: item.preco_unitario
+        }))
+    };
+    
+    // Se for desconto percentual
+    if (venda.tipo_desconto === 'percentual') {
+        venda.percentual_desconto = venda.valor_desconto;
+        venda.valor_desconto = 0;
+    }
+    
+    const subtotal = calcularSubtotalCarrinho();
+    const desconto = calcularDesconto(subtotal, venda.tipo_desconto, 
+        venda.tipo_desconto === 'valor' ? venda.valor_desconto : venda.percentual_desconto);
+    const total = subtotal - desconto;
+    
+    if (!confirm(`Confirmar venda?\nItens: ${carrinho.length}\nTotal: R$ ${total.toFixed(2)}`)) {
+        return;
+    }
+    
+    const btn = document.querySelector('.btn-primary[onclick="finalizarVenda()"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    btn.disabled = true;
+    
+    try {
+        console.log("Enviando venda:", venda); // Debug
+        const response = await fetch('/api/vendas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(venda)
+        });
         
-        function calcularTotalCarrinho() {
+        console.log("Resposta:", response); // Debug
+        
+        const result = await response.json();
+        console.log("Resultado:", result); // Debug
+        
+        if (result.success) {
+            showAlert('success', result.message);
+            
+            // Limpar tudo
+            carrinho = [];
+            document.getElementById('clienteNome').value = '';
+            document.getElementById('valorDesconto').value = '0';
+            document.getElementById('tipoDesconto').value = 'valor';
+            
+            atualizarCarrinho();
+            await carregarProdutos();
+            
+            // Foco de volta para próxima venda
+            setTimeout(() => {
+                document.getElementById('buscarCodigo')?.focus();
+            }, 1000);
+            
+        } else {
+            showAlert('error', result.message);
+        }
+    } catch (error) {
+        console.error('Erro completo:', error); // Debug
+        showAlert('error', 'Erro ao conectar com o servidor. Verifique o console (F12)');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+        // Função auxiliar para calcular subtotal
+        function calcularSubtotalCarrinho() {
             return carrinho.reduce((total, item) => total + (item.preco_unitario * item.quantidade), 0);
         }
-        
+                
+        function calcularTotalCarrinho() {
+                    return carrinho.reduce((total, item) => total + (item.preco_unitario * item.quantidade), 0);
+                }
+                
         // ========== HISTÓRICO DE VENDAS ==========
         async function carregarVendas() {
             try {
@@ -1077,10 +1308,10 @@
         }
         
         // ========== DASHBOARD ==========
-        function atualizarDashboard() {
+        async function atualizarDashboard() {
             if (produtos.length === 0) return;
             
-            // Estatísticas
+            // Estatísticas básicas
             const totalEstoque = produtos.reduce((sum, p) => sum + p.estoque, 0);
             const totalProdutos = produtos.length;
             const produtosBaixos = produtos.filter(p => p.estoque < 10).length;
@@ -1089,6 +1320,22 @@
             document.getElementById('totalEstoque').textContent = totalEstoque;
             document.getElementById('totalProdutos').textContent = totalProdutos;
             document.getElementById('produtosBaixos').textContent = produtosBaixos;
+            
+            // Buscar vendas de hoje
+            try {
+                const response = await fetch('/api/dashboard/vendas-hoje');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('vendasHoje').textContent = 
+                        `R$ ${data.total_hoje.toFixed(2)}`;
+                } else {
+                    document.getElementById('vendasHoje').textContent = 'R$ 0,00';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar vendas hoje:', error);
+                document.getElementById('vendasHoje').textContent = 'R$ 0,00';
+            }
             
             // Lista de estoque baixo
             const estoqueBaixo = produtos.filter(p => p.estoque < 10);
@@ -1135,7 +1382,7 @@
                 p.nome.toLowerCase().includes(termo) || 
                 (p.categoria && p.categoria.toLowerCase().includes(termo))
             );
-            
+
             const tbody = document.getElementById('produtosDisponiveis');
             if (!tbody) return;
             
