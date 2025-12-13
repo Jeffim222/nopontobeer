@@ -734,7 +734,7 @@
         // Verificar autenticação
         async function checkAuth() {
             try {
-                const response = await fetch('/api/auth/status');
+                const response = await fetch(`${ip}/api/auth/status`);
                 const data = await response.json();
                 
                 if (!data.loggedIn) {
@@ -750,7 +750,7 @@
         // ========== FUNÇÃO PARA LEITOR EXTERNO ==========
         async function buscarEAdicionarPorCodigo(codigo) {
             try {
-                const response = await fetch(`/api/produtos/codigo/${codigo}`);
+                const response = await fetch(`${ip}/api/produtos/codigo/${codigo}`);
                 const data = await response.json();
                 
                 if (data.success && data.produto) {
@@ -769,7 +769,7 @@
         // Logout
         async function logout() {
             try {
-                await fetch('/logout', { method: 'POST' });
+                await fetch(`${ip}/logout`, { method: 'POST' });
                 window.location.href = '/';
             } catch (error) {
                 console.error('Erro no logout:', error);
@@ -819,7 +819,7 @@
         // ========== FUNÇÕES DE PRODUTOS ==========
         async function carregarProdutos() {
             try {
-                const response = await fetch('/api/produtos');
+                const response = await fetch(`${ip}/api/produtos`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -899,14 +899,14 @@
                 let response;
                 if (produtoId) {
                     // Atualizar
-                    response = await fetch(`/api/produtos/${produtoId}`, {
+                    response = await fetch(`${ip}/api/produtos/${produtoId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(produto)
                     });
                 } else {
                     // Criar novo
-                    response = await fetch('/api/produtos', {
+                    response = await fetch(`${ip}/api/produtos`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(produto)
@@ -953,7 +953,7 @@
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
             
             try {
-                const response = await fetch(`/api/produtos/${id}`, {
+                const response = await fetch(`${ip}/api/produtos/${id}`, {
                     method: 'DELETE'
                 });
                 
@@ -1131,7 +1131,7 @@
                     }
                     
                     try {
-                        const response = await fetch(`/api/produtos/codigo/${codigo}`);
+                        const response = await fetch(`${ip}/api/produtos/codigo/${codigo}`);
                         const data = await response.json();
                         
                         if (data.success) {
@@ -1219,7 +1219,7 @@
     
     try {
         console.log("Enviando venda:", venda); // Debug
-        const response = await fetch('/api/vendas', {
+        const response = await fetch(`${ip}/api/vendas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(venda)
@@ -1270,7 +1270,7 @@
         // ========== HISTÓRICO DE VENDAS ==========
         async function carregarVendas() {
             try {
-                const response = await fetch('/api/vendas');
+                const response = await fetch(`${ip}/api/vendas`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1323,7 +1323,7 @@
             
             // Buscar vendas de hoje
             try {
-                const response = await fetch('/api/dashboard/vendas-hoje');
+                const response = await fetch(`${ip}/api/dashboard/vendas-hoje`);
                 const data = await response.json();
                 
                 if (data.success) {
